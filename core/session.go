@@ -28,6 +28,7 @@ type Session struct {
 	DoneSignal     chan struct{}
 	RemoteAddr     string
 	UserAgent      string
+	IsCaptchaDone  bool
 }
 
 func NewSession(name string) (*Session, error) {
